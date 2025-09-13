@@ -6,7 +6,7 @@ import { authService, User, MessageData } from '@/lib/auth';
 import AuthModal from '@/components/AuthModal';
 import UsersList from '@/components/UsersList';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
-import { Send, LogOut, MessageCircle, Menu, X } from 'lucide-react';
+import { LogOut, Menu, MessageCircle, Send, User as UserIcon, X, Search } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -188,8 +188,8 @@ export default function Home() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && newMessage.trim() && !e.shiftKey) {
       e.preventDefault();
       sendMessage();
     }
@@ -206,186 +206,205 @@ export default function Home() {
   }
 
   return (
-    <div id="chat_container_743281" className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900">
-      {/* Mobile Sidebar Toggle */}
-      <button
-        id="mobile_toggle_594726"
-        onClick={() => setShowUsersList(true)}
-        className="fixed bottom-6 right-6 xl:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-2xl shadow-xl z-20 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 hover:scale-105 backdrop-blur-sm"
-        aria-label="Show users"
-      >
-        <Menu size={20} />
-      </button>
-
-      {/* Mobile Sidebar Overlay */}
-      {showUsersList && (
-        <div id="mobile_overlay_829156" className="fixed inset-0 z-30 xl:hidden">
-          <div
-            id="overlay_backdrop_564729"
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowUsersList(false)}
-          />
-          <div id="mobile_sidebar_384957" className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-white/95 backdrop-blur-xl shadow-2xl border-r border-slate-200">
-            <div id="mobile_header_729483" className="p-6 border-b border-slate-200/50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white">
-              <h2 className="text-xl font-semibold text-slate-800">Members</h2>
-              <button
-                id="mobile_close_156392"
-                onClick={() => setShowUsersList(false)}
-                className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all duration-200"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <UsersList
-              users={users.filter(u => u.id !== user!.id).concat([user!])}
-              currentUserId={user!.id}
-              onClose={() => setShowUsersList(false)}
-            />
-          </div>
+    <div className="flex h-screen bg-white text-gray-800">
+      {/* Sidebar - Hidden on mobile by default */}
+      <div className="hidden md:flex w-80 border-r border-gray-200 bg-white flex-col">
+        <div className="p-4 border-b border-gray-200">
+          <h1 className="text-xl font-bold text-gray-800">Chats</h1>
         </div>
-      )}
-
-      {/* Desktop Sidebar */}
-      <div id="desktop_sidebar_157439" className="hidden xl:flex flex-col w-80 bg-white/80 backdrop-blur-xl border-r border-slate-200/50">
-        <div id="sidebar_header_825743" className="p-6 border-b border-slate-200/30 bg-gradient-to-r from-white/50 to-slate-50/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
-                <MessageCircle className="text-white" size={20} />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold text-slate-800">Chat</h1>
-                <p className="text-xs text-slate-500">{users.length + 1} online</p>
-              </div>
-            </div>
-            <button
-              id="logout_button_347286"
-              onClick={handleLogout}
-              className="p-2.5 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200 group"
-              title="Logout"
-            >
-              <LogOut size={18} className="group-hover:scale-110 transition-transform duration-200" />
-            </button>
-          </div>
-        </div>
-        <div id="users_scroll_container_692847" className="flex-1 overflow-y-auto">
-          <UsersList
-            users={users.filter(u => u.id !== user!.id).concat([user!])}
+        <div className="flex-1 overflow-y-auto">
+          <UsersList 
+            users={users}
             currentUserId={user!.id}
           />
         </div>
       </div>
 
       {/* Main Chat Area */}
-      <div id="main_chat_area_908357" className="flex-1 flex flex-col h-screen overflow-hidden bg-white/50 backdrop-blur-sm">
-        {/* Header */}
-        <div id="chat_header_625791" className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <MessageCircle className="text-white" size={24} />
+      <div className="flex-1 flex flex-col h-screen relative">
+
+        {/* Mobile Sidebar Toggle Button */}
+        <button
+          onClick={() => setShowUsersList(true)}
+          className="md:hidden fixed bottom-4 right-4 bg-blue-500 text-white p-3 rounded-full shadow-lg z-20 hover:bg-blue-600 transition-colors"
+          aria-label="Show users"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+        </button>
+
+        {/* Mobile Sidebar Overlay */}
+        {showUsersList && (
+          <div className="fixed inset-0 z-30 md:hidden">
+            <div 
+              className="absolute inset-0 bg-black/50" 
+              onClick={() => setShowUsersList(false)} 
+            />
+            <div className="absolute left-0 top-0 h-full w-4/5 max-w-sm bg-white shadow-xl">
+              <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+                <h2 className="text-xl font-bold">Chats</h2>
+                <button 
+                  onClick={() => setShowUsersList(false)}
+                  className="text-gray-500 hover:text-gray-700"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
               </div>
-              <div>
-                <h2 className="font-semibold text-xl text-slate-800">General Chat</h2>
-                <p className="text-sm text-slate-500 flex items-center gap-2">
-                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
-                  {typingUsers.length > 0 ? (
-                    <span>{typingUsers[0]} is typing...</span>
-                  ) : (
-                    <span>{users.length + 1} members online</span>
-                  )}
-                </p>
-              </div>
+              <UsersList
+                users={users}
+                currentUserId={user!.id}
+                onClose={() => setShowUsersList(false)}
+              />
             </div>
-            <div className="xl:hidden">
-              <button
-                id="mobile_logout_463829"
-                onClick={handleLogout}
-                className="px-4 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
-              >
-                Logout
-              </button>
+          </div>
+        )}
+
+        {/* Chat Header */}
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <button 
+              onClick={() => setShowUsersList(true)}
+              className="md:hidden text-gray-500 hover:text-gray-700"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
             </div>
+            <div>
+              <h2 className="font-semibold">General Chat</h2>
+              <p className="text-xs text-gray-500">
+                {typingUsers.length > 0 ? `${typingUsers[0]} is typing...` : 'Online'}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-4">
+            <button className="text-gray-400 hover:text-gray-600">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="1"></circle>
+                <circle cx="19" cy="12" r="1"></circle>
+                <circle cx="5" cy="12" r="1"></circle>
+              </svg>
+            </button>
+            <button 
+              onClick={handleLogout}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </button>
           </div>
         </div>
 
         {/* Messages */}
-        <ScrollArea.Root id="messages_scroll_area_582947" className="flex-1 overflow-hidden">
-          <ScrollArea.Viewport id="messages_viewport_416372" className="w-full h-full p-6">
-            <div id="messages_container_795428" className="space-y-4 max-w-4xl mx-auto">
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  id={`message_wrapper_${msg.id}`}
-                  className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div
-                    id={`message_bubble_${msg.id}`}
-                    className={`max-w-[85%] lg:max-w-[70%] xl:max-w-[60%] p-4 shadow-lg ${
-                      msg.senderId === user?.id
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-3xl rounded-br-md'
-                        : msg.username === 'System'
-                        ? 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600 text-center text-sm rounded-2xl mx-auto'
-                        : 'bg-white text-slate-800 rounded-3xl rounded-bl-md border border-slate-200'
-                    }`}
-                  >
-                    {msg.username !== 'System' && msg.senderId !== user?.id && (
-                      <p id={`message_author_${msg.id}`} className="text-xs font-semibold text-blue-600 mb-2 tracking-wide">
-                        {msg.username}
-                      </p>
-                    )}
-                    <p id={`message_content_${msg.id}`} className="text-sm leading-relaxed">{msg.content}</p>
-                    <p id={`message_timestamp_${msg.id}`} className={`text-xs mt-2 ${
-                      msg.senderId === user?.id ? 'text-blue-200' : 'text-slate-400'
-                    } text-right font-medium`}>
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              <div id="messages_end_marker_238195" ref={messagesEndRef} />
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+          {messages.length === 0 ? (
+            <div className="h-full flex flex-col items-center justify-center text-gray-400">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                </svg>
+              </div>
+              <p className="text-lg font-medium">No messages yet</p>
+              <p className="text-sm">Start the conversation</p>
             </div>
-          </ScrollArea.Viewport>
-          <ScrollArea.Scrollbar
-            className="flex select-none touch-none p-0.5 bg-transparent transition-colors duration-200 ease-out hover:bg-slate-200/50 data-[orientation=vertical]:w-3 data-[orientation=horizontal]:h-3"
-            orientation="vertical"
-          >
-            <ScrollArea.Thumb className="flex-1 bg-slate-300 hover:bg-slate-400 rounded-full relative before:content-[''] before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-[44px] before:min-h-[44px] transition-colors duration-200" />
-          </ScrollArea.Scrollbar>
-        </ScrollArea.Root>
+          ) : (
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
+              >
+                <div
+                  className={`max-w-[80%] rounded-2xl p-3 ${
+                    msg.senderId === user?.id
+                      ? 'bg-blue-500 text-white rounded-br-none'
+                      : 'bg-white border border-gray-200 rounded-bl-none shadow-sm'
+                  }`}
+                >
+                  {msg.username !== 'System' && msg.senderId !== user?.id && (
+                    <p className="text-xs font-medium text-blue-600 mb-1">
+                      {msg.username}
+                    </p>
+                  )}
+                  <p className="text-sm">{msg.content}</p>
+                  <p className={`text-xs mt-1 text-right ${
+                    msg.senderId === user?.id ? 'text-blue-100' : 'text-gray-400'
+                  }`}>
+                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </p>
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
         {/* Message Input */}
-        <div id="message_input_area_395174" className="p-6 bg-white/90 backdrop-blur-xl border-t border-slate-200/50">
-          <div id="input_container_568239" className="max-w-4xl mx-auto">
-            <div className="flex items-end gap-4">
-              <div className="flex-1 relative">
-                <input
-                  id="message_input_729348"
-                  type="text"
-                  value={newMessage}
-                  onChange={handleInputChange}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Type a message..."
-                  disabled={isSending}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 pr-14 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 focus:outline-none transition-all duration-200 text-slate-800 placeholder-slate-400 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label="Type your message"
-                />
+        <div className="p-4 border-t border-gray-200 bg-white">
+          <div className="flex items-center gap-2">
+            <button className="text-gray-400 hover:text-gray-600 p-2">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </button>
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={handleInputChange}
+                onKeyPress={handleKeyPress}
+                placeholder="Type a message..."
+                className="w-full bg-gray-100 border-0 rounded-full py-2 px-4 pr-12 focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all text-sm"
+                aria-label="Type your message"
+              />
+              <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center space-x-1">
+                <button className="text-gray-400 hover:text-gray-600 p-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </button>
                 <button
-                  id="send_button_483756"
                   onClick={sendMessage}
                   disabled={!newMessage.trim() || isSending}
-                  className={`absolute right-2 bottom-2 p-2.5 rounded-xl transition-all duration-200 ${
-                    newMessage.trim() && !isSending
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl hover:scale-105'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  className={`p-1 rounded-full transition-colors ${
+                    newMessage.trim() 
+                      ? 'text-blue-500 hover:text-blue-600' 
+                      : 'text-gray-300 cursor-not-allowed'
                   }`}
-                  aria-label={isSending ? "Sending message..." : "Send message"}
+                  aria-label="Send message"
                 >
-                  {isSending ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Send size={20} />
-                  )}
+                  <svg 
+                    xmlns="http://www.w3.org/2000/svg" 
+                    width="20" 
+                    height="20" 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="2" 
+                    strokeLinecap="round" 
+                    strokeLinejoin="round"
+                    className={isSending ? 'animate-pulse' : ''}
+                  >
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
                 </button>
               </div>
             </div>

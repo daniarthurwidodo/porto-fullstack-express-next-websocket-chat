@@ -8,6 +8,7 @@ export interface User {
   email: string;
   avatar?: string;
   isOnline: boolean;
+  lastSeen?: string | Date;
 }
 
 export interface AuthResponse {
