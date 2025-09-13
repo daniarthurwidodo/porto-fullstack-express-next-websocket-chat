@@ -27,6 +27,16 @@ export interface RegisterCredentials {
   password: string;
 }
 
+export interface MessageData {
+  _id: string;
+  content: string;
+  createdAt: string;
+  sender: {
+    _id: string;
+    username: string;
+  };
+}
+
 class AuthService {
   private token: string | null = null;
 
@@ -48,8 +58,11 @@ class AuthService {
       }
       
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Login failed');
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Login failed');
+      }
+      throw new Error('Login failed');
     }
   }
 
@@ -65,8 +78,11 @@ class AuthService {
       }
       
       return response.data;
-    } catch (error: any) {
-      throw new Error(error.response?.data?.message || 'Registration failed');
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(error.response?.data?.message || 'Registration failed');
+      }
+      throw new Error('Registration failed');
     }
   }
 
@@ -96,7 +112,7 @@ class AuthService {
         headers: { Authorization: `Bearer ${this.token}` }
       });
       return response.data.user;
-    } catch (error) {
+    } catch {
       this.logout();
       return null;
     }
@@ -116,7 +132,7 @@ class AuthService {
     }
   }
 
-  async getMessages(): Promise<any[]> {
+  async getMessages(): Promise<MessageData[]> {
     if (!this.token) return [];
 
     try {

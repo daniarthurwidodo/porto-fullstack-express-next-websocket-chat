@@ -12,23 +12,55 @@ import Message, { IMessage } from './models/Message';
 
 const app = express();
 const server = http.createServer(app);
+
+// Configure CORS for Express
+const corsOptions = {
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:3001',
+    'http://localhost:3002',
+    'http://localhost:3003',
+    'http://localhost:3004',
+    'http://localhost:3005'
+  ],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+};
+
+// Apply CORS to Express
+app.use(cors(corsOptions));
+
+// Configure Socket.IO with CORS
 const io = new Server(server, {
   cors: {
-    origin: ["http://localhost:3001", "http://localhost:3002", "http://localhost:3003", "http://localhost:3004"],
-    methods: ["GET", "POST"]
-  }
+    origin: corsOptions.origin,
+    methods: corsOptions.methods,
+    allowedHeaders: corsOptions.allowedHeaders,
+    credentials: true
+  },
+  // Enable HTTP long-polling fallback
+  transports: ['websocket', 'polling']
 });
 
 const PORT = process.env.PORT || 4001;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://admin:password123@localhost:27017/chatapp?authSource=admin';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
-// Middleware
-app.use(cors({
-  origin: ["http://localhost:3001", "http://localhost:3002", "http://localhost:3003", "http://localhost:3004"],
-  credentials: true
-}));
 app.use(express.json());
+
+// Handle preflight requests for all routes
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', req.headers.origin || '*');
+    res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.sendStatus(200);
+  } else {
+    next();
+  }
+});
 
 // Routes
 app.use('/api/auth', authRoutes);
@@ -96,9 +128,10 @@ io.on('connection', async (socket) => {
       await message.save();
       await message.populate('sender', 'username avatar');
 
+      const populatedSender = message.sender as unknown as IUser;
       const messageData = {
         id: message._id,
-        username: (message.sender as any).username,
+        username: populatedSender.username,
         content: message.content,
         timestamp: message.createdAt,
         senderId: message.sender._id

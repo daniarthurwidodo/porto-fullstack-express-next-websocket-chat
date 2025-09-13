@@ -2,11 +2,11 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { authService, User } from '@/lib/auth';
+import { authService, User, MessageData } from '@/lib/auth';
 import AuthModal from '@/components/AuthModal';
 import UsersList from '@/components/UsersList';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
-import { Send, LogOut, MessageCircle, Users, Menu } from 'lucide-react';
+import { Send, LogOut, MessageCircle, Menu, X } from 'lucide-react';
 
 interface Message {
   id: string;
@@ -19,13 +19,12 @@ interface Message {
 export default function Home() {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [showAuthModal, setShowAuthModal] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
   const [showUsersList, setShowUsersList] = useState(false);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isSending, setIsSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -45,7 +44,6 @@ export default function Home() {
         const currentUser = await authService.getCurrentUser();
         if (currentUser) {
           setUser(currentUser);
-          setShowAuthModal(false);
           await loadInitialData();
           connectSocket(token);
         }
@@ -62,7 +60,7 @@ export default function Home() {
         authService.getUsers()
       ]);
       
-      const formattedMessages = messagesData.map((msg: any) => ({
+      const formattedMessages = messagesData.map((msg: MessageData) => ({
         id: msg._id,
         username: msg.sender.username,
         content: msg.content,
@@ -83,7 +81,6 @@ export default function Home() {
     });
     
     newSocket.on('connect', () => {
-      setIsConnected(true);
       console.log('Connected to chat server');
     });
 
@@ -128,7 +125,6 @@ export default function Home() {
     });
 
     newSocket.on('disconnect', () => {
-      setIsConnected(false);
       console.log('Disconnected from chat server');
     });
 
@@ -137,7 +133,6 @@ export default function Home() {
 
   const handleAuthSuccess = async (userData: User) => {
     setUser(userData);
-    setShowAuthModal(false);
     await loadInitialData();
     const token = authService.getToken();
     if (token) {
@@ -154,17 +149,23 @@ export default function Home() {
     setSocket(null);
     setMessages([]);
     setUsers([]);
-    setIsConnected(false);
-    setShowAuthModal(true);
   };
 
-  const sendMessage = () => {
-    if (newMessage.trim() && socket) {
-      socket.emit('message', { content: newMessage });
-      setNewMessage('');
-      
-      // Stop typing indicator
-      socket.emit('typing', { isTyping: false });
+  const sendMessage = async () => {
+    if (newMessage.trim() && socket && !isSending) {
+      setIsSending(true);
+      try {
+        socket.emit('message', { content: newMessage });
+        setNewMessage('');
+
+        // Stop typing indicator
+        socket.emit('typing', { isTyping: false });
+
+        // Small delay to show sending state
+        await new Promise(resolve => setTimeout(resolve, 200));
+      } finally {
+        setIsSending(false);
+      }
     }
   };
 
@@ -188,23 +189,16 @@ export default function Home() {
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
       sendMessage();
     }
   };
 
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false
-    });
-  };
-
-  if (showAuthModal) {
+  if (!user) {
     return (
       <AuthModal
-        isOpen={showAuthModal}
+        isOpen={true}
         onClose={() => {}}
         onSuccess={handleAuthSuccess}
       />
@@ -212,123 +206,189 @@ export default function Home() {
   }
 
   return (
-    <div className="flex h-screen bg-gray-900 relative">
-      {/* Mobile Users Sidebar Overlay */}
+    <div id="chat_container_743281" className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 text-slate-900">
+      {/* Mobile Sidebar Toggle */}
+      <button
+        id="mobile_toggle_594726"
+        onClick={() => setShowUsersList(true)}
+        className="fixed bottom-6 right-6 xl:hidden bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 rounded-2xl shadow-xl z-20 hover:from-blue-700 hover:to-blue-800 transition-all duration-200 hover:scale-105 backdrop-blur-sm"
+        aria-label="Show users"
+      >
+        <Menu size={20} />
+      </button>
+
+      {/* Mobile Sidebar Overlay */}
       {showUsersList && (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowUsersList(false)} />
-          <div className="absolute left-0 top-0 h-full w-80 max-w-[85vw]">
-            <UsersList 
-              users={[...users, user!]} 
-              currentUserId={user!.id} 
+        <div id="mobile_overlay_829156" className="fixed inset-0 z-30 xl:hidden">
+          <div
+            id="overlay_backdrop_564729"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setShowUsersList(false)}
+          />
+          <div id="mobile_sidebar_384957" className="absolute left-0 top-0 h-full w-80 max-w-[85vw] bg-white/95 backdrop-blur-xl shadow-2xl border-r border-slate-200">
+            <div id="mobile_header_729483" className="p-6 border-b border-slate-200/50 flex justify-between items-center bg-gradient-to-r from-slate-50 to-white">
+              <h2 className="text-xl font-semibold text-slate-800">Members</h2>
+              <button
+                id="mobile_close_156392"
+                onClick={() => setShowUsersList(false)}
+                className="p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-all duration-200"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <UsersList
+              users={users.filter(u => u.id !== user!.id).concat([user!])}
+              currentUserId={user!.id}
               onClose={() => setShowUsersList(false)}
             />
           </div>
         </div>
       )}
 
-      {/* Desktop Users Sidebar */}
-      <div className="hidden lg:block">
-        {user ? (
-          <UsersList users={[...users, user]} currentUserId={user.id} />
-        ) : (
-          <div className="p-4 text-center text-gray-500">
-            Please sign in to see users
+      {/* Desktop Sidebar */}
+      <div id="desktop_sidebar_157439" className="hidden xl:flex flex-col w-80 bg-white/80 backdrop-blur-xl border-r border-slate-200/50">
+        <div id="sidebar_header_825743" className="p-6 border-b border-slate-200/30 bg-gradient-to-r from-white/50 to-slate-50/50">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-700 rounded-xl flex items-center justify-center shadow-lg">
+                <MessageCircle className="text-white" size={20} />
+              </div>
+              <div>
+                <h1 className="text-lg font-semibold text-slate-800">Chat</h1>
+                <p className="text-xs text-slate-500">{users.length + 1} online</p>
+              </div>
+            </div>
+            <button
+              id="logout_button_347286"
+              onClick={handleLogout}
+              className="p-2.5 text-slate-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200 group"
+              title="Logout"
+            >
+              <LogOut size={18} className="group-hover:scale-110 transition-transform duration-200" />
+            </button>
           </div>
-        )}
+        </div>
+        <div id="users_scroll_container_692847" className="flex-1 overflow-y-auto">
+          <UsersList
+            users={users.filter(u => u.id !== user!.id).concat([user!])}
+            currentUserId={user!.id}
+          />
+        </div>
       </div>
 
       {/* Main Chat Area */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div id="main_chat_area_908357" className="flex-1 flex flex-col h-screen overflow-hidden bg-white/50 backdrop-blur-sm">
         {/* Header */}
-        <div className="bg-gray-800 border-b border-gray-700 p-3 sm:p-4">
+        <div id="chat_header_625791" className="bg-white/80 backdrop-blur-xl border-b border-slate-200/50 p-6 shadow-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                onClick={() => setShowUsersList(true)}
-                className="lg:hidden text-gray-400 hover:text-white transition-colors p-2 rounded-lg hover:bg-gray-700"
-              >
-                <Menu size={20} />
-              </button>
-              <MessageCircle className="text-blue-400 w-5 h-5 sm:w-6 sm:h-6" />
-              <h1 className="text-lg sm:text-xl font-semibold text-white truncate">Chat Room</h1>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-emerald-500 to-emerald-600 rounded-2xl flex items-center justify-center shadow-lg">
+                <MessageCircle className="text-white" size={24} />
+              </div>
+              <div>
+                <h2 className="font-semibold text-xl text-slate-800">General Chat</h2>
+                <p className="text-sm text-slate-500 flex items-center gap-2">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                  {typingUsers.length > 0 ? (
+                    <span>{typingUsers[0]} is typing...</span>
+                  ) : (
+                    <span>{users.length + 1} members online</span>
+                  )}
+                </p>
+              </div>
             </div>
-            <button
-              onClick={handleLogout}
-              className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 sm:px-4 rounded-lg transition-all flex items-center gap-1 sm:gap-2 hover:scale-105 active:scale-95 text-sm sm:text-base"
-            >
-              <LogOut size={14} className="sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Logout</span>
-            </button>
+            <div className="xl:hidden">
+              <button
+                id="mobile_logout_463829"
+                onClick={handleLogout}
+                className="px-4 py-2 text-sm text-red-500 hover:text-red-600 hover:bg-red-50 rounded-xl transition-all duration-200"
+              >
+                Logout
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Messages */}
-        <ScrollArea.Root className="flex-1">
-          <ScrollArea.Viewport className="w-full h-full p-2 sm:p-4">
-            <div className="space-y-3 sm:space-y-4">
+        <ScrollArea.Root id="messages_scroll_area_582947" className="flex-1 overflow-hidden">
+          <ScrollArea.Viewport id="messages_viewport_416372" className="w-full h-full p-6">
+            <div id="messages_container_795428" className="space-y-4 max-w-4xl mx-auto">
               {messages.map((msg) => (
                 <div
                   key={msg.id}
-                  className={`flex ${
-                    msg.senderId === user?.id ? 'justify-end' : 'justify-start'
-                  }`}
+                  id={`message_wrapper_${msg.id}`}
+                  className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
                 >
                   <div
-                    className={`max-w-[85%] sm:max-w-xs lg:max-w-md px-3 py-2 sm:px-4 sm:py-3 rounded-lg shadow-lg ${
+                    id={`message_bubble_${msg.id}`}
+                    className={`max-w-[85%] lg:max-w-[70%] xl:max-w-[60%] p-4 shadow-lg ${
                       msg.senderId === user?.id
-                        ? 'bg-blue-600 text-white rounded-br-none'
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-3xl rounded-br-md'
                         : msg.username === 'System'
-                        ? 'bg-gray-700 text-gray-300 text-center text-sm rounded-lg'
-                        : 'bg-gray-700 text-white rounded-bl-none'
+                        ? 'bg-gradient-to-r from-slate-100 to-slate-200 text-slate-600 text-center text-sm rounded-2xl mx-auto'
+                        : 'bg-white text-slate-800 rounded-3xl rounded-bl-md border border-slate-200'
                     }`}
                   >
                     {msg.username !== 'System' && msg.senderId !== user?.id && (
-                      <p className="text-xs text-blue-300 mb-1 font-medium">{msg.username}</p>
+                      <p id={`message_author_${msg.id}`} className="text-xs font-semibold text-blue-600 mb-2 tracking-wide">
+                        {msg.username}
+                      </p>
                     )}
-                    <p className="text-sm leading-relaxed break-words">{msg.content}</p>
-                    <p className="text-xs text-gray-300 mt-1 sm:mt-2 opacity-70">
-                      {new Date(msg.timestamp).toLocaleTimeString()}
+                    <p id={`message_content_${msg.id}`} className="text-sm leading-relaxed">{msg.content}</p>
+                    <p id={`message_timestamp_${msg.id}`} className={`text-xs mt-2 ${
+                      msg.senderId === user?.id ? 'text-blue-200' : 'text-slate-400'
+                    } text-right font-medium`}>
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
               ))}
-              <div ref={messagesEndRef} />
+              <div id="messages_end_marker_238195" ref={messagesEndRef} />
             </div>
           </ScrollArea.Viewport>
-          <ScrollArea.Scrollbar className="flex select-none touch-none p-0.5 bg-gray-800 transition-colors duration-[160ms] ease-out hover:bg-gray-700 data-[orientation=vertical]:w-2.5 data-[orientation=horizontal]:flex-col data-[orientation=horizontal]:h-2.5" orientation="vertical">
-            <ScrollArea.Thumb className="flex-1 bg-gray-600 rounded-[10px] relative before:content-[''] before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-[44px] before:min-h-[44px]" />
+          <ScrollArea.Scrollbar
+            className="flex select-none touch-none p-0.5 bg-transparent transition-colors duration-200 ease-out hover:bg-slate-200/50 data-[orientation=vertical]:w-3 data-[orientation=horizontal]:h-3"
+            orientation="vertical"
+          >
+            <ScrollArea.Thumb className="flex-1 bg-slate-300 hover:bg-slate-400 rounded-full relative before:content-[''] before:absolute before:top-1/2 before:left-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-full before:h-full before:min-w-[44px] before:min-h-[44px] transition-colors duration-200" />
           </ScrollArea.Scrollbar>
         </ScrollArea.Root>
 
-        {/* Typing Indicator */}
-        {typingUsers.length > 0 && (
-          <div className="px-2 sm:px-4 pb-2">
-            <div className="bg-gray-700 text-gray-300 px-3 py-2 rounded-lg text-sm inline-block">
-              {typingUsers.join(', ')} {typingUsers.length === 1 ? 'is' : 'are'} typing...
-            </div>
-          </div>
-        )}
-
         {/* Message Input */}
-        <div className="bg-gray-800 border-t border-gray-700 p-2 sm:p-4 safe-area-inset-bottom">
-          <div className="flex space-x-2 sm:space-x-3">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
-              className="flex-1 px-3 py-3 sm:px-4 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all text-sm sm:text-base"
-            />
-            <button
-              onClick={sendMessage}
-              disabled={!newMessage.trim()}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white font-medium py-3 px-4 sm:px-6 rounded-lg transition-all flex items-center gap-1 sm:gap-2 hover:scale-105 active:scale-95 min-w-[60px] sm:min-w-auto"
-            >
-              <Send size={16} className="sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Send</span>
-            </button>
+        <div id="message_input_area_395174" className="p-6 bg-white/90 backdrop-blur-xl border-t border-slate-200/50">
+          <div id="input_container_568239" className="max-w-4xl mx-auto">
+            <div className="flex items-end gap-4">
+              <div className="flex-1 relative">
+                <input
+                  id="message_input_729348"
+                  type="text"
+                  value={newMessage}
+                  onChange={handleInputChange}
+                  onKeyPress={handleKeyPress}
+                  placeholder="Type a message..."
+                  disabled={isSending}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl py-4 px-6 pr-14 focus:ring-2 focus:ring-blue-500/30 focus:border-blue-400 focus:outline-none transition-all duration-200 text-slate-800 placeholder-slate-400 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label="Type your message"
+                />
+                <button
+                  id="send_button_483756"
+                  onClick={sendMessage}
+                  disabled={!newMessage.trim() || isSending}
+                  className={`absolute right-2 bottom-2 p-2.5 rounded-xl transition-all duration-200 ${
+                    newMessage.trim() && !isSending
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white hover:from-blue-700 hover:to-blue-800 shadow-lg hover:shadow-xl hover:scale-105'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                  aria-label={isSending ? "Sending message..." : "Send message"}
+                >
+                  {isSending ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <Send size={20} />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
