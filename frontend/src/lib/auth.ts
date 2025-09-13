@@ -4,6 +4,7 @@ const API_BASE_URL = 'http://localhost:4001/api';
 
 export interface User {
   id: string;
+  _id?: string; // MongoDB _id field for compatibility
   username: string;
   email: string;
   avatar?: string;

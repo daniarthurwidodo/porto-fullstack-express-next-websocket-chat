@@ -94,24 +94,126 @@ io.use(async (socket, next) => {
   }
 });
 
+// Track connected users
+const connectedUsers = new Map();
+
+// Helper function to create room name for two users
+const createRoomName = (userId1: string, userId2: string): string => {
+  const sortedIds = [userId1, userId2].sort();
+  return `room_${sortedIds[0]}_${sortedIds[1]}`;
+};
+
 // Socket.IO connection handling
 io.on('connection', async (socket) => {
   console.log(`User connected: ${socket.username} (${socket.userId})`);
 
+  // Add user to connected users map
+  connectedUsers.set(socket.userId, socket.id);
+
+  // Join user to their personal room
+  socket.join(`user_${socket.userId}`);
+
+  // Join general room for system notifications
+  socket.join('general');
+
+  // Join individual rooms with all existing users
+  const allUsers = await User.find({}, '_id');
+  for (const user of allUsers) {
+    const userIdStr = (user._id as mongoose.Types.ObjectId).toString();
+    if (userIdStr !== socket.userId) {
+      const roomName = createRoomName(socket.userId, userIdStr);
+      socket.join(roomName);
+    }
+  }
+
   // Update user online status
-  await User.findByIdAndUpdate(socket.userId, { 
+  await User.findByIdAndUpdate(socket.userId, {
     isOnline: true,
     lastSeen: new Date()
   });
 
-  // Broadcast user joined
-  socket.broadcast.emit('user-joined', {
+  // Broadcast user joined to all users in general room
+  io.to('general').emit('user-joined', {
     userId: socket.userId,
     username: socket.username
   });
 
-  // Handle chat messages
-  socket.on('message', async (data) => {
+  // Make existing connected users join room with this new user
+  for (const [existingUserId, existingSocketId] of connectedUsers) {
+    if (existingUserId !== socket.userId) {
+      const roomName = createRoomName(socket.userId, existingUserId);
+      io.sockets.sockets.get(existingSocketId)?.join(roomName);
+    }
+  }
+
+  // Send list of online users to the connected user
+  const onlineUsers = await User.find(
+    { _id: { $in: Array.from(connectedUsers.keys()) } },
+    'username avatar isOnline lastSeen'
+  );
+
+  socket.emit('online-users', onlineUsers);
+
+  // Handle private messages
+  socket.on('private-message', async (data) => {
+    try {
+      const { content, recipientId } = data;
+
+      if (!content || content.trim().length === 0) {
+        return;
+      }
+
+      if (!mongoose.Types.ObjectId.isValid(recipientId)) {
+        return socket.emit('error', { message: 'Invalid recipient' });
+      }
+
+      // Create room name for this user pair
+      const roomName = createRoomName(socket.userId, recipientId);
+
+      // Save message to database
+      const message = new Message({
+        sender: socket.userId,
+        recipient: recipientId,
+        content: content.trim(),
+        isRead: false
+      });
+
+      await message.save();
+      await message.populate('sender', 'username avatar');
+      await message.populate('recipient', 'username avatar');
+
+      const populatedSender = message.sender as unknown as IUser;
+      const populatedRecipient = message.recipient as unknown as IUser;
+
+      const messageData = {
+        id: message._id,
+        content: message.content,
+        timestamp: message.createdAt,
+        sender: {
+          id: populatedSender._id,
+          username: populatedSender.username,
+          avatar: populatedSender.avatar
+        },
+        recipient: {
+          id: populatedRecipient._id,
+          username: populatedRecipient.username,
+          avatar: populatedRecipient.avatar
+        },
+        isRead: message.isRead
+      };
+
+      // Emit to both users in their shared room
+      io.to(roomName).emit('private-message', messageData);
+
+      console.log(`Private message from ${socket.username} to ${recipientId}: ${content}`);
+    } catch (error) {
+      console.error('Error handling private message:', error);
+      socket.emit('error', { message: 'Failed to send message' });
+    }
+  });
+
+  // Handle group messages
+  socket.on('group-message', async (data) => {
     try {
       const { content } = data;
       
@@ -122,42 +224,93 @@ io.on('connection', async (socket) => {
       // Save message to database
       const message = new Message({
         sender: socket.userId,
-        content: content.trim()
+        recipient: 'all',
+        content: content.trim(),
+        isRead: true // Group messages are marked as read by default
       });
 
       await message.save();
       await message.populate('sender', 'username avatar');
 
       const populatedSender = message.sender as unknown as IUser;
+
       const messageData = {
         id: message._id,
-        username: populatedSender.username,
         content: message.content,
         timestamp: message.createdAt,
-        senderId: message.sender._id
+        sender: {
+          id: populatedSender._id,
+          username: populatedSender.username,
+          avatar: populatedSender.avatar
+        },
+        isRead: true
       };
 
-      // Broadcast message to all clients
-      io.emit('message', messageData);
-      console.log(`Message from ${socket.username}: ${content}`);
+      // Broadcast to all users in general room
+      io.to('general').emit('group-message', messageData);
+      
+      console.log(`Group message from ${socket.username}: ${content}`);
     } catch (error) {
-      console.error('Error handling message:', error);
-      socket.emit('error', { message: 'Failed to send message' });
+      console.error('Error handling group message:', error);
+      socket.emit('error', { message: 'Failed to send group message' });
     }
   });
 
-  // Handle typing indicators
-  socket.on('typing', (data) => {
-    socket.broadcast.emit('user-typing', {
+  // Handle typing indicators for private messages
+  socket.on('private-typing', (data) => {
+    const { recipientId, isTyping } = data;
+
+    if (mongoose.Types.ObjectId.isValid(recipientId)) {
+      const roomName = createRoomName(socket.userId, recipientId);
+      socket.to(roomName).emit('user-typing', {
+        userId: socket.userId,
+        username: socket.username,
+        isTyping,
+        isPrivate: true
+      });
+    }
+  });
+
+  // Handle typing indicators for group chat
+  socket.on('group-typing', (data) => {
+    socket.broadcast.to('general').emit('user-typing', {
       userId: socket.userId,
       username: socket.username,
-      isTyping: data.isTyping
+      isTyping: data.isTyping,
+      isPrivate: false
     });
+  });
+
+  // Handle message read receipts
+  socket.on('message-read', async (data) => {
+    try {
+      const { messageId } = data;
+      
+      const message = await Message.findById(messageId);
+      if (!message) {
+        return socket.emit('error', { message: 'Message not found' });
+      }
+
+      // Only mark as read if the current user is the recipient
+      if (message.recipient.toString() === socket.userId) {
+        message.isRead = true;
+        await message.save();
+        
+        // Notify sender in their shared room
+        const roomName = createRoomName(socket.userId, message.sender.toString());
+        socket.to(roomName).emit('message-read', { messageId });
+      }
+    } catch (error) {
+      console.error('Error handling read receipt:', error);
+    }
   });
 
   // Handle user disconnect
   socket.on('disconnect', async () => {
     console.log(`User disconnected: ${socket.username}`);
+    
+    // Remove user from connected users
+    connectedUsers.delete(socket.userId);
     
     // Update user offline status
     await User.findByIdAndUpdate(socket.userId, {
@@ -165,8 +318,8 @@ io.on('connection', async (socket) => {
       lastSeen: new Date()
     });
 
-    // Broadcast user left
-    socket.broadcast.emit('user-left', {
+    // Broadcast user left to general room
+    io.to('general').emit('user-left', {
       userId: socket.userId,
       username: socket.username
     });

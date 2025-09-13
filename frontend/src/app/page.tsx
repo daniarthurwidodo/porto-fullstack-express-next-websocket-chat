@@ -1,32 +1,60 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { authService, User, MessageData } from '@/lib/auth';
+import { authService, User as AuthUser } from '@/lib/auth';
 import AuthModal from '@/components/AuthModal';
 import UsersList from '@/components/UsersList';
 import * as ScrollArea from '@radix-ui/react-scroll-area';
-import { LogOut, Menu, MessageCircle, Send, User as UserIcon, X, Search } from 'lucide-react';
+import { LogOut, Menu, MessageCircle, Send, User as UserIcon, X, Search, Users } from 'lucide-react';
+
+// Extend the User type to include _id
+type User = AuthUser & { _id: string; };
 
 interface Message {
+  _id: string;
   id: string;
-  username: string;
   content: string;
-  timestamp: string;
+  sender: User;
   senderId: string;
+  recipient?: User;
+  recipientId?: string;
+  isGroup: boolean;
+  isRead: boolean;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+  timestamp?: string | Date;
+}
+
+interface ActiveChat {
+  id: string;
+  name: string;
+  isGroup: boolean;
+  avatar?: string;
+  lastSeen?: string;
 }
 
 export default function Home() {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [user, setUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [users, setUsers] = useState<User[]>([]);
-  const [typingUsers, setTypingUsers] = useState<string[]>([]);
+  const [typingUsers, setTypingUsers] = useState<Array<{
+    userId: string;
+    username: string;
+    isPrivate: boolean;
+  }>>([]);
   const [showUsersList, setShowUsersList] = useState(false);
   const [isSending, setIsSending] = useState(false);
+  const [activeChat, setActiveChat] = useState<ActiveChat | null>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set());
+  const [isConnected, setIsConnected] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const messageInputRef = useRef<HTMLInputElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -36,108 +64,338 @@ export default function Home() {
     scrollToBottom();
   }, [messages]);
 
+  // Format message for display
+  const formatMessage = useCallback((messageData: any): Message => {
+    const sender = messageData.sender || {
+      _id: messageData.senderId,
+      id: messageData.senderId,
+      username: messageData.username || 'Unknown',
+      email: messageData.email || '',
+      avatar: messageData.avatar,
+      isOnline: false
+    };
+    
+    const isGroup = messageData.recipient === 'all' || messageData.isGroup;
+    
+    return {
+      _id: messageData._id || messageData.id,
+      id: messageData._id || messageData.id,
+      content: messageData.content,
+      sender,
+      senderId: messageData.senderId,
+      recipient: messageData.recipient,
+      recipientId: messageData.recipientId,
+      isGroup,
+      isRead: messageData.isRead || false,
+      createdAt: messageData.createdAt || new Date(),
+      updatedAt: messageData.updatedAt,
+      timestamp: messageData.timestamp || messageData.createdAt || new Date()
+    };
+  }, []);
+
+  // Handle new incoming messages
+  const handleNewMessage = useCallback((messageData: any) => {
+    const formattedMessage = formatMessage(messageData);
+    setMessages(prev => [...prev, formattedMessage]);
+    
+    // Mark as read if it's a private message to the current user
+    if (formattedMessage.recipientId && 
+        formattedMessage.recipientId === currentUser?._id) {
+      socket?.emit('message-read', { messageId: formattedMessage.id });
+    }
+  }, [formatMessage, socket, currentUser?._id]);
+
+  // Handle typing indicators
+  const handleTyping = useCallback((data: { userId: string; username: string; isTyping: boolean; isPrivate: boolean }) => {
+    setTypingUsers(prev => {
+      if (data.isTyping) {
+        // Add to typing users if not already present
+        if (!prev.some(u => u.userId === data.userId && u.isPrivate === data.isPrivate)) {
+          return [...prev, { 
+            userId: data.userId, 
+            username: data.username, 
+            isPrivate: data.isPrivate 
+          }];
+        }
+        return prev;
+      } else {
+        // Remove from typing users
+        return prev.filter(u => u.userId !== data.userId || u.isPrivate !== data.isPrivate);
+      }
+    });
+  }, []);
+
+  // Handle user status changes
+  const handleUserStatus = useCallback((data: { userId: string; username: string }, status: 'joined' | 'left') => {
+    setUsers(prev =>
+      prev.map(user =>
+        user.id === data.userId
+          ? { ...user, isOnline: status === 'joined' }
+          : user
+      )
+    );
+
+    if (status === 'joined') {
+      setOnlineUsers(prev => new Set([...prev, data.userId]));
+    } else {
+      setOnlineUsers(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(data.userId);
+        return newSet;
+      });
+    }
+  }, []);
+
+  // Connect to WebSocket
+  const connectSocket = useCallback((token: string) => {
+    const newSocket = io('http://localhost:4001', {
+      auth: { token },
+      transports: ['websocket', 'polling']
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Connected to WebSocket server');
+      setIsConnected(true);
+    });
+
+    newSocket.on('disconnect', () => {
+      setIsConnected(false);
+    });
+
+    // Set up event listeners
+    const onPrivateMessage = (data: any) => handleNewMessage({ ...data, isGroup: false });
+    const onGroupMessage = (data: any) => handleNewMessage({ ...data, isGroup: true });
+    
+    newSocket.on('private-message', onPrivateMessage);
+    newSocket.on('group-message', onGroupMessage);
+    newSocket.on('user-typing', handleTyping);
+    newSocket.on('user-joined', (data: any) => handleUserStatus(data, 'joined'));
+    newSocket.on('user-left', (data: any) => handleUserStatus(data, 'left'));
+    newSocket.on('online-users', (users: any[]) => {
+      const userIds = users.filter(u => u.isOnline).map(u => u._id || u.id);
+      setOnlineUsers(new Set(userIds));
+    });
+    newSocket.on('message-read', (data: { messageId: string }) => {
+      setMessages(prev => 
+        prev.map(msg => 
+          msg.id === data.messageId ? { ...msg, isRead: true } : msg
+        )
+      );
+    });
+
+    setSocket(newSocket);
+    
+    // Cleanup function
+    return () => {
+      newSocket.off('private-message', onPrivateMessage);
+      newSocket.off('group-message', onGroupMessage);
+      newSocket.off('user-typing', handleTyping);
+      newSocket.off('user-joined');
+      newSocket.off('user-left');
+      newSocket.off('online-users');
+      newSocket.off('message-read');
+      newSocket.disconnect();
+    };
+  }, [handleNewMessage, handleTyping, handleUserStatus]);
+
+  // Load initial data
+  const loadInitialData = useCallback(async () => {
+    try {
+      const [usersData, messagesData] = await Promise.all([
+        authService.getUsers(),
+        authService.getMessages()
+      ]);
+      
+      // Transform users to include _id and ensure they match our User type
+      const typedUsers = usersData.map(user => ({
+        ...user,
+        _id: user.id,
+        isOnline: onlineUsers.has(user.id)
+      } as User));
+      
+      setUsers(typedUsers);
+      
+      if (messagesData) {
+        // Transform messages to include proper types
+        const formattedMessages = messagesData.map((msg: any) => {
+          const sender = typedUsers.find(u => u._id === msg.senderId) || 
+            { _id: msg.senderId, id: msg.senderId, username: 'Unknown', email: '', isOnline: false } as User;
+          
+          const recipient = msg.recipientId === 'all' ? 'all' : 
+            (typedUsers.find(u => u._id === msg.recipientId) || 
+              { _id: msg.recipientId, id: msg.recipientId, username: 'Unknown', email: '', isOnline: false } as User);
+          
+          return {
+            _id: msg.id || msg._id,
+            id: msg.id || msg._id,
+            content: msg.content,
+            sender,
+            senderId: msg.senderId,
+            recipient,
+            recipientId: msg.recipientId,
+            isGroup: msg.recipientId === 'all' || msg.isGroup,
+            isRead: msg.isRead || false,
+            createdAt: msg.createdAt || new Date(),
+            updatedAt: msg.updatedAt,
+            timestamp: msg.timestamp || msg.createdAt || new Date()
+          } as Message;
+        });
+        
+        setMessages(formattedMessages);
+      }
+    } catch (error) {
+      console.error('Error loading initial data:', error);
+    }
+  }, [onlineUsers]);
+
+  // Check authentication and load data
   useEffect(() => {
-    // Check if user is already authenticated
     const checkAuth = async () => {
       const token = authService.getToken();
       if (token) {
-        const currentUser = await authService.getCurrentUser();
-        if (currentUser) {
-          setUser(currentUser);
-          await loadInitialData();
-          connectSocket(token);
+        try {
+          const userData = await authService.getCurrentUser();
+          if (userData) {
+            // Ensure user has _id
+            const currentUser = { ...userData, _id: userData._id || userData.id } as User;
+            setCurrentUser(currentUser);
+            await loadInitialData();
+            
+            // Connect to WebSocket
+            const newSocket = io('http://localhost:4001', {
+              auth: { token },
+              transports: ['websocket', 'polling']
+            });
+            
+            newSocket.on('connect', () => {
+              console.log('Connected to WebSocket server');
+              setIsConnected(true);
+            });
+            
+            newSocket.on('disconnect', () => {
+              setIsConnected(false);
+            });
+            
+            // Set up event listeners
+            newSocket.on('private-message', (data: any) => handleNewMessage({ ...data, isGroup: false }));
+            newSocket.on('group-message', (data: any) => handleNewMessage({ ...data, isGroup: true }));
+            newSocket.on('user-typing', handleTyping);
+            newSocket.on('user-joined', (data: any) => handleUserStatus(data, 'joined'));
+            newSocket.on('user-left', (data: any) => handleUserStatus(data, 'left'));
+            newSocket.on('online-users', (users: any[]) => {
+              const userIds = users.filter(u => u.isOnline).map(u => u._id || u.id);
+              setOnlineUsers(new Set(userIds));
+            });
+            newSocket.on('message-read', (data: { messageId: string }) => {
+              setMessages(prev => 
+                prev.map(msg => 
+                  msg.id === data.messageId ? { ...msg, isRead: true } : msg
+                )
+              );
+            });
+            
+            setSocket(newSocket);
+          }
+        } catch (error) {
+          console.error('Authentication error:', error);
+          authService.logout();
         }
       }
     };
 
     checkAuth();
-  }, []);
-
-  const loadInitialData = async () => {
-    try {
-      const [messagesData, usersData] = await Promise.all([
-        authService.getMessages(),
-        authService.getUsers()
-      ]);
-      
-      const formattedMessages = messagesData.map((msg: MessageData) => ({
-        id: msg._id,
-        username: msg.sender.username,
-        content: msg.content,
-        timestamp: msg.createdAt,
-        senderId: msg.sender._id
-      }));
-      
-      setMessages(formattedMessages);
-      setUsers(usersData);
-    } catch (error) {
-      console.error('Error loading initial data:', error);
-    }
-  };
-
-  const connectSocket = (token: string) => {
-    const newSocket = io('http://localhost:4001', {
-      auth: { token }
-    });
     
-    newSocket.on('connect', () => {
-      console.log('Connected to chat server');
-    });
-
-    newSocket.on('message', (messageData: Message) => {
-      setMessages(prev => [...prev, messageData]);
-    });
-
-    newSocket.on('user-joined', (data: { userId: string; username: string }) => {
-      const systemMessage: Message = {
-        id: Date.now().toString(),
-        username: 'System',
-        content: `${data.username} joined the chat`,
-        timestamp: new Date().toISOString(),
-        senderId: 'system'
-      };
-      setMessages(prev => [...prev, systemMessage]);
-      
-      // Refresh users list
-      authService.getUsers().then(setUsers);
-    });
-
-    newSocket.on('user-left', (data: { userId: string; username: string }) => {
-      const systemMessage: Message = {
-        id: Date.now().toString(),
-        username: 'System',
-        content: `${data.username} left the chat`,
-        timestamp: new Date().toISOString(),
-        senderId: 'system'
-      };
-      setMessages(prev => [...prev, systemMessage]);
-      
-      // Refresh users list
-      authService.getUsers().then(setUsers);
-    });
-
-    newSocket.on('user-typing', (data: { userId: string; username: string; isTyping: boolean }) => {
-      if (data.isTyping) {
-        setTypingUsers(prev => [...prev.filter(u => u !== data.username), data.username]);
-      } else {
-        setTypingUsers(prev => prev.filter(u => u !== data.username));
+    // Cleanup on unmount
+    return () => {
+      if (socket) {
+        socket.disconnect();
       }
-    });
+    };
+  }, [loadInitialData, handleNewMessage]);
 
-    newSocket.on('disconnect', () => {
-      console.log('Disconnected from chat server');
-    });
+  // Handle sending a new message
+  const sendMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !socket || !currentUser) return;
 
-    setSocket(newSocket);
+    try {
+      setIsSending(true);
+      
+      const messageData = {
+        content: newMessage,
+        senderId: currentUser._id,
+        recipientId: activeChat?.isGroup ? 'all' : activeChat?.id,
+        isGroup: activeChat?.isGroup || false
+      };
+
+      if (activeChat?.isGroup) {
+        socket.emit('group-message', messageData);
+      } else if (activeChat) {
+        socket.emit('private-message', {
+          ...messageData,
+          recipientId: activeChat.id
+        });
+      }
+
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    } finally {
+      setIsSending(false);
+    }
   };
 
-  const handleAuthSuccess = async (userData: User) => {
-    setUser(userData);
-    await loadInitialData();
-    const token = authService.getToken();
-    if (token) {
-      connectSocket(token);
+  // Handle user typing indicator
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const message = e.target.value;
+    setNewMessage(message);
+
+    if (!socket || !currentUser || !activeChat) return;
+
+    // Clear any existing timeout
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
+
+    // Emit typing event
+    socket.emit('typing', {
+      isTyping: true,
+      isPrivate: !activeChat.isGroup,
+      recipientId: activeChat.isGroup ? null : activeChat.id
+    });
+
+    // Set timeout to stop typing indicator after 2 seconds of inactivity
+    typingTimeoutRef.current = setTimeout(() => {
+      if (socket) {
+        socket.emit('typing', {
+          isTyping: false,
+          isPrivate: !activeChat?.isGroup,
+          recipientId: activeChat?.isGroup ? null : activeChat?.id
+        });
+      }
+    }, 2000);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage(e as any);
+    }
+  };
+
+  const handleAuthSuccess = (userData: AuthUser) => {
+    // Convert AuthUser to local User type with _id
+    const user: User = { ...userData, _id: userData._id || userData.id };
+    setCurrentUser(user);
+
+    // Run async operations
+    (async () => {
+      await loadInitialData();
+      const token = authService.getToken();
+      if (token) {
+        connectSocket(token);
+      }
+    })();
   };
 
   const handleLogout = async () => {
@@ -145,57 +403,13 @@ export default function Home() {
       socket.disconnect();
     }
     await authService.logout();
-    setUser(null);
+    setCurrentUser(null);
     setSocket(null);
     setMessages([]);
     setUsers([]);
   };
 
-  const sendMessage = async () => {
-    if (newMessage.trim() && socket && !isSending) {
-      setIsSending(true);
-      try {
-        socket.emit('message', { content: newMessage });
-        setNewMessage('');
-
-        // Stop typing indicator
-        socket.emit('typing', { isTyping: false });
-
-        // Small delay to show sending state
-        await new Promise(resolve => setTimeout(resolve, 200));
-      } finally {
-        setIsSending(false);
-      }
-    }
-  };
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setNewMessage(e.target.value);
-    
-    if (socket) {
-      // Send typing indicator
-      socket.emit('typing', { isTyping: true });
-      
-      // Clear previous timeout
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-      
-      // Set new timeout to stop typing indicator
-      typingTimeoutRef.current = setTimeout(() => {
-        socket.emit('typing', { isTyping: false });
-      }, 1000);
-    }
-  };
-
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && newMessage.trim() && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  if (!user) {
+  if (!currentUser) {
     return (
       <AuthModal
         isOpen={true}
@@ -215,7 +429,7 @@ export default function Home() {
         <div className="flex-1 overflow-y-auto">
           <UsersList 
             users={users}
-            currentUserId={user!.id}
+            currentUserId={currentUser.id}
           />
         </div>
       </div>
@@ -259,7 +473,7 @@ export default function Home() {
               </div>
               <UsersList
                 users={users}
-                currentUserId={user!.id}
+                currentUserId={currentUser.id}
                 onClose={() => setShowUsersList(false)}
               />
             </div>
@@ -328,25 +542,25 @@ export default function Home() {
             messages.map((msg) => (
               <div
                 key={msg.id}
-                className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${msg.senderId === currentUser?.id ? 'justify-end' : 'justify-start'}`}
               >
                 <div
                   className={`max-w-[80%] rounded-2xl p-3 ${
-                    msg.senderId === user?.id
+                    msg.senderId === currentUser?.id
                       ? 'bg-blue-500 text-white rounded-br-none'
                       : 'bg-white border border-gray-200 rounded-bl-none shadow-sm'
                   }`}
                 >
-                  {msg.username !== 'System' && msg.senderId !== user?.id && (
+                  {msg.sender?.username !== 'System' && msg.senderId !== currentUser?.id && (
                     <p className="text-xs font-medium text-blue-600 mb-1">
-                      {msg.username}
+                      {msg.sender?.username}
                     </p>
                   )}
                   <p className="text-sm">{msg.content}</p>
                   <p className={`text-xs mt-1 text-right ${
-                    msg.senderId === user?.id ? 'text-blue-100' : 'text-gray-400'
+                    msg.senderId === currentUser?.id ? 'text-blue-100' : 'text-gray-400'
                   }`}>
-                    {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {msg.timestamp ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : ''}
                   </p>
                 </div>
               </div>
