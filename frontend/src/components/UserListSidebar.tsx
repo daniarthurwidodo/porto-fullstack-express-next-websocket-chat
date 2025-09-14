@@ -56,7 +56,7 @@ export default function UserListSidebar({
         ) : (
           <>
             {showSections ? (
-              <div id="user-sections" className="space-y-4">
+              <div id="user-sections" className="">
                 {onlineUsers.length > 0 && (
                   <div id="online-users-section">
                     <h3 id="online-users-header" className="text-sm font-semibold text-blue-700 mb-2 flex items-center gap-2">
