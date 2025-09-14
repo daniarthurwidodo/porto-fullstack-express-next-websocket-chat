@@ -16,6 +16,7 @@ A real-time chat application built with Next.js, Express.js, Socket.IO, and Mong
 - Typing indicators
 - User online/offline status
 - Message history loading
+- Private and group messaging
 
 ### 🎨 Modern UI
 - WhatsApp-inspired interface design
@@ -131,14 +132,19 @@ For quick testing, use these pre-seeded accounts:
 - `GET /api/auth/users` - Get all users
 
 ### Messages
-- `GET /api/messages` - Get message history
+- `GET /api/messages/:recipientId` - Get messages with a specific user or group
 - `POST /api/messages` - Send new message
+- `POST /api/messages/mark-read` - Mark messages as read
+
+### Health Check
+- `GET /api/health` - Server health status
 
 ### WebSocket Events
 - `message` - Send/receive chat messages
 - `typing` - Typing indicators
 - `user-joined` - User connection notifications
 - `user-left` - User disconnection notifications
+- `user-typing` - Typing indicators from other users
 
 ## Environment Variables
 
@@ -186,10 +192,9 @@ NEXT_PUBLIC_API_URL=http://localhost:4001
 ```typescript
 {
   sender: ObjectId;     // Reference to User
+  recipient: ObjectId | 'all'; // Reference to User or 'all' for group messages
   content: string;      // Message text (max 1000 chars)
-  messageType: string;  // 'text' or 'system'
-  isEdited: boolean;    // Edit status
-  editedAt?: Date;      // Edit timestamp
+  isRead: boolean;      // Read status
   createdAt: Date;      // Message timestamp
 }
 ```
@@ -201,18 +206,20 @@ NEXT_PUBLIC_API_URL=http://localhost:4001
 - Automatic reconnection on network issues
 - Message delivery confirmation
 - Typing indicators with automatic timeout
+- Private and group messaging support
 
 ### User Management
 - Secure password hashing with bcrypt
 - JWT token-based authentication
 - Online/offline status tracking
 - User list with presence indicators
+- Last seen timestamps
 
 ### Message Persistence
 - All messages stored in MongoDB
 - Message history loaded on login
-- Support for message editing (backend ready)
-- System messages for user events
+- Support for private and group messaging
+- Message read status tracking
 
 ## Development
 

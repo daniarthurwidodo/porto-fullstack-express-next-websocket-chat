@@ -9,9 +9,18 @@ import authRoutes from './routes/auth';
 import messageRoutes from './routes/messages';
 import User, { IUser } from './models/User';
 import Message, { IMessage } from './models/Message';
+import { handleUncaughtExceptions, handleUnhandledRejections } from './utils/errorHandler';
+import { gracefulShutdown, setupConnectionTracking } from './utils/gracefulShutdown';
+
+// Set up global error handlers
+handleUncaughtExceptions();
+handleUnhandledRejections();
 
 const app = express();
 const server = http.createServer(app);
+
+// Set up connection tracking for graceful shutdown
+setupConnectionTracking(server);
 
 // Configure CORS for Express
 const corsOptions = {
@@ -346,3 +355,14 @@ declare module 'socket.io' {
     username: string;
   }
 }
+
+// Graceful shutdown handlers
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received. Starting graceful shutdown...');
+  gracefulShutdown(server, io, mongoose, 'SIGTERM');
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received. Starting graceful shutdown...');
+  gracefulShutdown(server, io, mongoose, 'SIGINT');
+});
