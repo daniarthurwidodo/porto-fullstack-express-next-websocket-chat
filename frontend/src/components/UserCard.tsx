@@ -17,10 +17,10 @@ export default function UserCard({ user, onClick, isSelected = false }: UserCard
   return (
     <li
       id={`user-card-${user.id}`}
-      className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+      className={`group flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-all duration-200 hover-lift focus-ring ${
         isSelected
-          ? 'bg-blue-400 ring-2 ring-blue-500 shadow-md'
-          : 'hover:bg-blue-300 hover:shadow-sm'
+          ? 'bg-gradient-to-r from-indigo-50 to-purple-50 ring-2 ring-indigo-200 shadow-lg border border-indigo-100'
+          : 'hover:bg-slate-50/80 hover:shadow-md border border-transparent'
       }`}
       onClick={onClick}
       onKeyDown={handleKeyDown}
@@ -37,8 +37,8 @@ export default function UserCard({ user, onClick, isSelected = false }: UserCard
             id={`avatar-${user.id}`}
             src={user.avatar}
             alt={`${user.name}'s avatar`}
-            className="rounded-full object-cover border-2 border-white shadow-sm"
-            style={{ width: '40px', height: '40px' }}
+            className="rounded-full object-cover border-2 border-white shadow-md ring-2 ring-slate-100"
+            style={{ width: '44px', height: '44px' }}
             data-testid={`avatar-${user.id}`}
             onError={(e) => {
               // Fallback to initials if avatar fails to load
@@ -52,10 +52,10 @@ export default function UserCard({ user, onClick, isSelected = false }: UserCard
 
         <div
           id={`initials-${user.id}`}
-          className={`rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-sm border-2 border-white ${
+          className={`rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-sm shadow-md ring-2 ring-white group-hover:scale-105 transition-transform duration-200 ${
             user.avatar ? 'hidden' : 'flex'
           }`}
-          style={{ width: '40px', height: '40px' }}
+          style={{ width: '44px', height: '44px' }}
           data-testid={`initials-${user.id}`}
         >
           {user.name.charAt(0).toUpperCase()}
@@ -64,8 +64,10 @@ export default function UserCard({ user, onClick, isSelected = false }: UserCard
         {/* Online status indicator */}
         <div
           id={`status-dot-${user.id}`}
-          className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white shadow-sm ${
-            user.online ? 'bg-green-500' : 'bg-gray-400'
+          className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white shadow-sm transition-all duration-200 ${
+            user.online 
+              ? 'bg-emerald-500 animate-pulse' 
+              : 'bg-slate-400'
           }`}
           data-status={user.online ? 'online' : 'offline'}
         />
@@ -75,7 +77,11 @@ export default function UserCard({ user, onClick, isSelected = false }: UserCard
         <div className="flex flex-col">
           <span
             id={`username-${user.id}`}
-            className="font-semibold text-blue-900 truncate text-sm leading-tight"
+            className={`font-semibold truncate text-sm leading-tight transition-colors duration-200 ${
+              isSelected 
+                ? 'text-indigo-900' 
+                : 'text-slate-700 group-hover:text-slate-900'
+            }`}
             data-testid={`username-${user.id}`}
             title={user.name}
           >
@@ -83,16 +89,23 @@ export default function UserCard({ user, onClick, isSelected = false }: UserCard
           </span>
           <span
             id={`status-label-${user.id}`}
-            className={`text-xs font-medium mt-0.5 ${
+            className={`text-xs font-medium mt-0.5 transition-colors duration-200 ${
               user.online
-                ? 'text-green-600'
-                : 'text-gray-500'
+                ? isSelected ? 'text-emerald-700' : 'text-emerald-600'
+                : isSelected ? 'text-slate-600' : 'text-slate-500'
             }`}
           >
-            {user.online ? 'Online' : 'Offline'}
+            {user.online ? 'Active now' : 'Offline'}
           </span>
         </div>
       </div>
+
+      {/* Chat indicator for selected user */}
+      {isSelected && (
+        <div className="flex-shrink-0">
+          <div className="w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
+        </div>
+      )}
     </li>
   );
 }

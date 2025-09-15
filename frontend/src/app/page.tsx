@@ -76,7 +76,7 @@ function ChatLayout() {
   } = useUsers();
 
   return (
-    <div id="chat-layout" className="relative flex h-screen bg-blue-50 text-blue-900" data-testid="chat-layout">
+    <div id="chat-layout" className="relative flex h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50" data-testid="chat-layout">
        {/* {!isLoggedIn && <LoginModal onLogin={() => setIsLoggedIn(true)} />} */}
       <UserListSidebar
         users={filteredUsers}
@@ -88,37 +88,45 @@ function ChatLayout() {
         onUserSelect={setSelectedUser}
       />
 
-      <main id="main-content" className="flex-1 p-6 overflow-hidden" data-testid="main-content">
-        {!selectedUser ? (
-          <EmptyState
-            title="Welcome to DeepBlue Chat"
-            description="Select a user from the sidebar to start a private conversation."
-            icon={
-              <div id="welcome-icon" className="w-16 h-16 bg-blue-200 rounded-full flex items-center justify-center">
-                <svg
-                  id="chat-icon"
-                  className="w-8 h-8 text-blue-600"
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
-                  />
-                </svg>
-              </div>
-            }
-          />
-        ) : (
-          <ChatRoom user={selectedUser} onBack={() => setSelectedUser(null)} />
-        )}
+      <main id="main-content" className="flex-1 p-8 overflow-hidden relative" data-testid="main-content">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 25px 25px, rgba(99, 102, 241, 0.3) 2px, transparent 0)`,
+            backgroundSize: '50px 50px'
+          }} />
+        </div>
+        
+        <div className="relative z-10 h-full">
+          {!selectedUser ? (
+            <EmptyState
+              title="Welcome to Professional Chat"
+              description="Select a user from the sidebar to start a private conversation."
+              icon={
+                <div id="welcome-icon" className="w-20 h-20 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-2xl flex items-center justify-center shadow-lg border border-white/20">
+                  <svg
+                    id="chat-icon"
+                    className="w-10 h-10 text-indigo-600"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={1.5}
+                      d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                    />
+                  </svg>
+                </div>
+              }
+            />
+          ) : (
+            <ChatRoom user={selectedUser} onBack={() => setSelectedUser(null)} />
+          )}
+        </div>
       </main>
-
-     
     </div>
   );
 }
