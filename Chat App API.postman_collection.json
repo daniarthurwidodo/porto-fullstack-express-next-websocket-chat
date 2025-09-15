@@ -1,516 +1,746 @@
 {
-  \"info\": {\n    \"name\": \"Chat App API\",\n    \"description\": \"API collection for the Chat Application with authentication and messaging endpoints\",\n    \"schema\": \"https://schema.getpostman.com/json/collection/v2.1.0/collection.json\",\n    \"version\": \"1.0.0\"\n  },
-  \"auth\": {
-    \"type\": \"bearer\",
-    \"bearer\": [
+  "info": {
+    "name": "Chat App API",
+    "description": "Complete API collection for the Chat Application with authentication, messaging, and WebSocket endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.1.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
       {
-        \"key\": \"token\",
-        \"value\": \"{{auth_token}}\",
-        \"type\": \"string\"
+        "key": "token",
+        "value": "{{authToken}}",
+        "type": "string"
       }
     ]
   },
-  \"variable\": [
+  "variable": [
     {
-      \"key\": \"base_url\",
-      \"value\": \"http://localhost:4001/api\",
-      \"type\": \"string\"
+      "key": "baseUrl",
+      "value": "http://localhost:4001",
+      "type": "string"
     },
     {
-      \"key\": \"auth_token\",
-      \"value\": \"\",
-      \"type\": \"string\"
+      "key": "authToken",
+      "value": "",
+      "type": "string"
     },
     {
-      \"key\": \"user_id\",
-      \"value\": \"\",
-      \"type\": \"string\",
-      \"description\": \"User ID for messaging endpoints\"
+      "key": "userId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "",
+      "type": "string"
     }
   ],
-  \"item\": [
+  "item": [
     {
-      \"name\": \"Health Check\",
-      \"request\": {
-        \"method\": \"GET\",
-        \"header\": [],
-        \"url\": {
-          \"raw\": \"{{base_url}}/health\",
-          \"host\": [\"{{base_url}}\"],
-          \"path\": [\"health\"]
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/health",
+          "host": ["{{baseUrl}}"],
+          "path": ["api", "health"]
         },
-        \"description\": \"Check if the server is running\"
+        "description": "Check if the server is running"
       },
-      \"response\": [
+      "response": [
         {
-          \"name\": \"Health Check Response\",
-          \"originalRequest\": {
-            \"method\": \"GET\",
-            \"header\": [],
-            \"url\": {
-              \"raw\": \"{{base_url}}/health\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"health\"]
+          "name": "Health Check Response",
+          "originalRequest": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "health"]
             }
           },
-          \"status\": \"OK\",
-          \"code\": 200,
-          \"_postman_previewlanguage\": \"json\",
-          \"body\": \"{\\n  \\\"status\\\": \\\"OK\\\",\\n  \\\"message\\\": \\\"Chat server is running\\\"\\n}\"
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "body": "{\n  \"status\": \"OK\",\n  \"message\": \"Chat server is running\"\n}"
         }
       ]
     },
     {
-      \"name\": \"Authentication\",
-      \"item\": [
+      "name": "Authentication",
+      "item": [
         {
-          \"name\": \"Register\",
-          \"event\": [
+          "name": "Register",
+          "event": [
             {
-              \"listen\": \"test\",
-              \"script\": {
-                \"exec\": [
-                  \"if (pm.response.code === 201) {\",
-                  \"    const response = pm.response.json();\",
-                  \"    pm.collectionVariables.set('auth_token', response.token);\",
-                  \"    console.log('User registered successfully. Token saved.');\",
-                  \"}\"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    pm.collectionVariables.set('username', response.user.username);",
+                  "    console.log('User registered successfully. Token saved.');",
+                  "}"
                 ],
-                \"type\": \"text/javascript\"
+                "type": "text/javascript"
               }
             }
           ],
-          \"request\": {
-            \"method\": \"POST\",
-            \"header\": [
+          "request": {
+            "method": "POST",
+            "header": [
               {
-                \"key\": \"Content-Type\",
-                \"value\": \"application/json\"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
-            \"body\": {
-              \"mode\": \"raw\",
-              \"raw\": \"{\\n  \\\"username\\\": \\\"testuser\\\",\\n  \\\"email\\\": \\\"test@example.com\\\",\\n  \\\"password\\\": \\\"password123\\\"\\n}\"
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
             },
-            \"url\": {
-              \"raw\": \"{{base_url}}/auth/register\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"auth\", \"register\"]
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "register"]
             },
-            \"description\": \"Register a new user account\"
+            "description": "Register a new user account"
           },
-          \"response\": [
+          "response": [
             {
-              \"name\": \"Register Success\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [
+              "name": "Register Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
                   {
-                    \"key\": \"Content-Type\",
-                    \"value\": \"application/json\"
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                \"body\": {
-                  \"mode\": \"raw\",
-                  \"raw\": \"{\\n  \\\"username\\\": \\\"testuser\\\",\\n  \\\"email\\\": \\\"test@example.com\\\",\\n  \\\"password\\\": \\\"password123\\\"\\n}\"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
                 },
-                \"url\": {
-                  \"raw\": \"{{base_url}}/auth/register\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"auth\", \"register\"]
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "register"]
                 }
               },
-              \"status\": \"Created\",
-              \"code\": 201,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"message\\\": \\\"User created successfully\\\",\\n  \\\"token\\\": \\\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\\\",\\n  \\\"user\\\": {\\n    \\\"id\\\": \\\"60f7b3b3d8e5c20015f0e8a1\\\",\\n    \\\"username\\\": \\\"testuser\\\",\\n    \\\"email\\\": \\\"test@example.com\\\",\\n    \\\"avatar\\\": \\\"\\\",\\n    \\\"isOnline\\\": true\\n  }\\n}\"
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"User created successfully\",\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"user\": {\n    \"id\": \"60f7b3b3d8e5c20015f0e8a1\",\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"avatar\": \"\",\n    \"isOnline\": true\n  }\n}"
             },
             {
-              \"name\": \"Register Error - User Exists\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [
+              "name": "Register Error - User Exists",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
                   {
-                    \"key\": \"Content-Type\",
-                    \"value\": \"application/json\"
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                \"body\": {
-                  \"mode\": \"raw\",
-                  \"raw\": \"{\\n  \\\"username\\\": \\\"testuser\\\",\\n  \\\"email\\\": \\\"test@example.com\\\",\\n  \\\"password\\\": \\\"password123\\\"\\n}\"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"username\": \"testuser\",\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
                 },
-                \"url\": {
-                  \"raw\": \"{{base_url}}/auth/register\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"auth\", \"register\"]
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/register",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "register"]
                 }
               },
-              \"status\": \"Bad Request\",
-              \"code\": 400,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"message\\\": \\\"User already exists with this email or username\\\"\\n}\"
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"User already exists with this email or username\"\n}"
             }
           ]
         },
         {
-          \"name\": \"Login\",
-          \"event\": [
+          "name": "Login",
+          "event": [
             {
-              \"listen\": \"test\",
-              \"script\": {
-                \"exec\": [
-                  \"if (pm.response.code === 200) {\",
-                  \"    const response = pm.response.json();\",
-                  \"    pm.collectionVariables.set('auth_token', response.token);\",
-                  \"    console.log('User logged in successfully. Token saved.');\",
-                  \"}\"
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    pm.collectionVariables.set('username', response.user.username);",
+                  "    console.log('User logged in successfully. Token saved.');",
+                  "}"
                 ],
-                \"type\": \"text/javascript\"
+                "type": "text/javascript"
               }
             }
           ],
-          \"request\": {
-            \"method\": \"POST\",
-            \"header\": [
+          "request": {
+            "method": "POST",
+            "header": [
               {
-                \"key\": \"Content-Type\",
-                \"value\": \"application/json\"
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
-            \"body\": {
-              \"mode\": \"raw\",
-              \"raw\": \"{\\n  \\\"email\\\": \\\"test@example.com\\\",\\n  \\\"password\\\": \\\"password123\\\"\\n}\"
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
             },
-            \"url\": {
-              \"raw\": \"{{base_url}}/auth/login\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"auth\", \"login\"]
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
             },
-            \"description\": \"Login to an existing user account\"
+            "description": "Login to an existing user account"
           },
-          \"response\": [
+          "response": [
             {
-              \"name\": \"Login Success\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [
+              "name": "Login Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
                   {
-                    \"key\": \"Content-Type\",
-                    \"value\": \"application/json\"
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                \"body\": {
-                  \"mode\": \"raw\",
-                  \"raw\": \"{\\n  \\\"email\\\": \\\"test@example.com\\\",\\n  \\\"password\\\": \\\"password123\\\"\\n}\"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"test@example.com\",\n  \"password\": \"password123\"\n}"
                 },
-                \"url\": {
-                  \"raw\": \"{{base_url}}/auth/login\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"auth\", \"login\"]
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "login"]
                 }
               },
-              \"status\": \"OK\",
-              \"code\": 200,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"message\\\": \\\"Login successful\\\",\\n  \\\"token\\\": \\\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\\\",\\n  \\\"user\\\": {\\n    \\\"id\\\": \\\"60f7b3b3d8e5c20015f0e8a1\\\",\\n    \\\"username\\\": \\\"testuser\\\",\\n    \\\"email\\\": \\\"test@example.com\\\",\\n    \\\"avatar\\\": \\\"\\\",\\n    \\\"isOnline\\\": true\\n  }\\n}\"
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Login successful\",\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"user\": {\n    \"id\": \"60f7b3b3d8e5c20015f0e8a1\",\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"avatar\": \"\",\n    \"isOnline\": true\n  }\n}"
             },
             {
-              \"name\": \"Login Error - Invalid Credentials\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [
+              "name": "Login Error - Invalid Credentials",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
                   {
-                    \"key\": \"Content-Type\",
-                    \"value\": \"application/json\"
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                \"body\": {
-                  \"mode\": \"raw\",
-                  \"raw\": \"{\\n  \\\"email\\\": \\\"wrong@example.com\\\",\\n  \\\"password\\\": \\\"wrongpassword\\\"\\n}\"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"wrong@example.com\",\n  \"password\": \"wrongpassword\"\n}"
                 },
-                \"url\": {
-                  \"raw\": \"{{base_url}}/auth/login\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"auth\", \"login\"]
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "login"]
                 }
               },
-              \"status\": \"Bad Request\",
-              \"code\": 400,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"message\\\": \\\"Invalid credentials\\\"\\n}\"
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Invalid credentials\"\n}"
             }
           ]
         },
         {
-          \"name\": \"Get Current User\",
-          \"request\": {
-            \"method\": \"GET\",
-            \"header\": [],
-            \"url\": {
-              \"raw\": \"{{base_url}}/auth/me\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"auth\", \"me\"]
-            },
-            \"description\": \"Get information about the currently authenticated user\"
-          },
-          \"response\": [
+          "name": "Login Demo User 1 (Alice)",
+          "event": [
             {
-              \"name\": \"Get Current User Success\",
-              \"originalRequest\": {
-                \"method\": \"GET\",
-                \"header\": [],
-                \"url\": {
-                  \"raw\": \"{{base_url}}/auth/me\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"auth\", \"me\"]
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    pm.collectionVariables.set('username', response.user.username);",
+                  "    console.log('Demo user Alice logged in successfully.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice@demo.com\",\n  \"password\": \"demo123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login as demo user Alice"
+          },
+          "response": [
+            {
+              "name": "Login Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"alice@demo.com\",\n  \"password\": \"demo123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "login"]
                 }
               },
-              \"status\": \"OK\",
-              \"code\": 200,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"user\\\": {\\n    \\\"id\\\": \\\"60f7b3b3d8e5c20015f0e8a1\\\",\\n    \\\"username\\\": \\\"testuser\\\",\\n    \\\"email\\\": \\\"test@example.com\\\",\\n    \\\"avatar\\\": \\\"\\\",\\n    \\\"isOnline\\\": true\\n  }\\n}\"
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Login successful\",\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"user\": {\n    \"id\": \"60f7b3b3d8e5c20015f0e8a2\",\n    \"username\": \"alice\",\n    \"email\": \"alice@demo.com\",\n    \"avatar\": \"\",\n    \"isOnline\": true\n  }\n}"
             }
           ]
         },
         {
-          \"name\": \"Logout\",
-          \"request\": {
-            \"method\": \"POST\",
-            \"header\": [],
-            \"url\": {
-              \"raw\": \"{{base_url}}/auth/logout\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"auth\", \"logout\"]
-            },
-            \"description\": \"Logout the current user\"
-          },
-          \"response\": [
+          "name": "Login Demo User 2 (Bob)",
+          "event": [
             {
-              \"name\": \"Logout Success\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [],
-                \"url\": {
-                  \"raw\": \"{{base_url}}/auth/logout\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"auth\", \"logout\"]
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('authToken', response.token);",
+                  "    pm.collectionVariables.set('userId', response.user.id);",
+                  "    pm.collectionVariables.set('username', response.user.username);",
+                  "    console.log('Demo user Bob logged in successfully.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"bob@demo.com\",\n  \"password\": \"demo123\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "login"]
+            },
+            "description": "Login as demo user Bob"
+          },
+          "response": [
+            {
+              "name": "Login Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"email\": \"bob@demo.com\",\n  \"password\": \"demo123\"\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/login",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "login"]
                 }
               },
-              \"status\": \"OK\",
-              \"code\": 200,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"message\\\": \\\"Logout successful\\\"\\n}\"
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Login successful\",\n  \"token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...\",\n  \"user\": {\n    \"id\": \"60f7b3b3d8e5c20015f0e8a3\",\n    \"username\": \"bob\",\n    \"email\": \"bob@demo.com\",\n    \"avatar\": \"\",\n    \"isOnline\": true\n  }\n}"
             }
           ]
         },
         {
-          \"name\": \"Get All Users\",
-          \"request\": {
-            \"method\": \"GET\",
-            \"header\": [],
-            \"url\": {
-              \"raw\": \"{{base_url}}/auth/users\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"auth\", \"users\"]
+          "name": "Get Current User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "me"]
             },
-            \"description\": \"Get a list of all registered users (excluding the current user)\"
+            "description": "Get information about the currently authenticated user"
           },
-          \"response\": [
+          "response": [
             {
-              \"name\": \"Get All Users Success\",
-              \"originalRequest\": {
-                \"method\": \"GET\",
-                \"header\": [],
-                \"url\": {
-                  \"raw\": \"{{base_url}}/auth/users\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"auth\", \"users\"]
+              "name": "Get Current User Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/me",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "me"]
                 }
               },
-              \"status\": \"OK\",
-              \"code\": 200,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"users\\\": [\\n    {\\n      \\\"_id\\\": \\\"60f7b3b3d8e5c20015f0e8a2\\\",\\n      \\\"username\\\": \\\"anotheruser\\\",\\n      \\\"email\\\": \\\"another@example.com\\\",\\n      \\\"avatar\\\": \\\"\\\",\\n      \\\"isOnline\\\": true\\n    }\\n  ]\\n}\"
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"user\": {\n    \"id\": \"60f7b3b3d8e5c20015f0e8a1\",\n    \"username\": \"testuser\",\n    \"email\": \"test@example.com\",\n    \"avatar\": \"\",\n    \"isOnline\": true\n  }\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/users",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "users"]
+            },
+            "description": "Get a list of all registered users (excluding the current user)"
+          },
+          "response": [
+            {
+              "name": "Get All Users Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/users",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "users"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"users\": [\n    {\n      \"_id\": \"60f7b3b3d8e5c20015f0e8a2\",\n      \"username\": \"alice\",\n      \"email\": \"alice@demo.com\",\n      \"avatar\": \"\",\n      \"isOnline\": true\n    },\n    {\n      \"_id\": \"60f7b3b3d8e5c20015f0e8a3\",\n      \"username\": \"bob\",\n      \"email\": \"bob@demo.com\",\n      \"avatar\": \"\",\n      \"isOnline\": true\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "auth", "logout"]
+            },
+            "description": "Logout the current user"
+          },
+          "response": [
+            {
+              "name": "Logout Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/auth/logout",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "auth", "logout"]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Logout successful\"\n}"
             }
           ]
         }
       ]
     },
     {
-      \"name\": \"Messages\",
-      \"item\": [
+      "name": "Messages",
+      "item": [
         {
-          \"name\": \"Get Messages with User\",
-          \"request\": {
-            \"method\": \"GET\",
-            \"header\": [],
-            \"url\": {
-              \"raw\": \"{{base_url}}/messages/{{user_id}}?limit=50\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"messages\", \"{{user_id}}\"],
-              \"query\": [
+          "name": "Get Messages with User",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/{{userId}}?limit=50",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "{{userId}}"],
+              "query": [
                 {
-                  \"key\": \"limit\",
-                  \"value\": \"50\",
-                  \"description\": \"Number of messages to retrieve (default: 50)\"
+                  "key": "limit",
+                  "value": "50",
+                  "description": "Number of messages to retrieve (default: 50)"
                 },
                 {
-                  \"key\": \"before\",
-                  \"value\": \"\",
-                  \"description\": \"Get messages before this timestamp (for pagination)\",
-                  \"disabled\": true
+                  "key": "before",
+                  "value": "",
+                  "description": "Get messages before this timestamp (for pagination)",
+                  "disabled": true
                 }
               ]
             },
-            \"description\": \"Get messages between current user and specified user (use 'all' for group messages)\"
+            "description": "Get messages between current user and specified user (use 'all' for group messages)"
           },
-          \"response\": [
+          "response": [
             {
-              \"name\": \"Get Messages Success\",
-              \"originalRequest\": {
-                \"method\": \"GET\",
-                \"header\": [],
-                \"url\": {
-                  \"raw\": \"{{base_url}}/messages/{{user_id}}?limit=50\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"messages\", \"{{user_id}}\"],
-                  \"query\": [
+              "name": "Get Messages Success",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages/{{userId}}?limit=50",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "messages", "{{userId}}"],
+                  "query": [
                     {
-                      \"key\": \"limit\",
-                      \"value\": \"50\"
+                      "key": "limit",
+                      "value": "50"
                     }
                   ]
                 }
               },
-              \"status\": \"OK\",
-              \"code\": 200,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"messages\\\": [\\n    {\\n      \\\"_id\\\": \\\"60f7b3b3d8e5c20015f0e8a3\\\",\\n      \\\"sender\\\": \\\"60f7b3b3d8e5c20015f0e8a1\\\",\\n      \\\"recipient\\\": \\\"60f7b3b3d8e5c20015f0e8a2\\\",\\n      \\\"content\\\": \\\"Hello, how are you?\\\",\\n      \\\"isRead\\\": true,\\n      \\\"createdAt\\\": \\\"2023-07-21T10:30:00.000Z\\\",\\n      \\\"updatedAt\\\": \\\"2023-07-21T10:30:00.000Z\\\"\\n    }\\n  ]\\n}\"
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"messages\": [\n    {\n      \"_id\": \"60f7b3b3d8e5c20015f0e8a3\",\n      \"sender\": \"60f7b3b3d8e5c20015f0e8a1\",\n      \"recipient\": \"60f7b3b3d8e5c20015f0e8a2\",\n      \"content\": \"Hello, how are you?\",\n      \"isRead\": true,\n      \"createdAt\": \"2023-07-21T10:30:00.000Z\",\n      \"updatedAt\": \"2023-07-21T10:30:00.000Z\"\n    }\n  ]\n}"
             }
           ]
         },
         {
-          \"name\": \"Send Message\",
-          \"request\": {
-            \"method\": \"POST\",
-            \"header\": [
+          "name": "Send Message",
+          "request": {
+            "method": "POST",
+            "header": [
               {
-                \"key\": \"Content-Type\",
-                \"value\": \"application/json\"
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
-            \"body\": {
-              \"mode\": \"raw\",
-              \"raw\": \"{\\n  \\\"content\\\": \\\"Hello, this is a test message!\\\",\\n  \\\"recipientId\\\": \\\"all\\\"\\n}\"
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"content\": \"Hello, this is a test message!\",\n  \"recipientId\": \"all\"\n}"
             },
-            \"url\": {
-              \"raw\": \"{{base_url}}/messages\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"messages\"]
+            "url": {
+              "raw": "{{baseUrl}}/api/messages",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages"]
             },
-            \"description\": \"Send a message to a user or to the group chat (use 'all' for group)\"
+            "description": "Send a message to a user or to the group chat (use 'all' for group)"
           },
-          \"response\": [
+          "response": [
             {
-              \"name\": \"Send Message Success\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [
+              "name": "Send Message Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
                   {
-                    \"key\": \"Content-Type\",
-                    \"value\": \"application/json\"
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                \"body\": {
-                  \"mode\": \"raw\",
-                  \"raw\": \"{\\n  \\\"content\\\": \\\"Hello, this is a test message!\\\",\\n  \\\"recipientId\\\": \\\"all\\\"\\n}\"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"Hello, this is a test message!\",\n  \"recipientId\": \"all\"\n}"
                 },
-                \"url\": {
-                  \"raw\": \"{{base_url}}/messages\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"messages\"]
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "messages"]
                 }
               },
-              \"status\": \"Created\",
-              \"code\": 201,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"message\\\": {\\n    \\\"_id\\\": \\\"60f7b3b3d8e5c20015f0e8a4\\\",\\n    \\\"sender\\\": {\\n      \\\"_id\\\": \\\"60f7b3b3d8e5c20015f0e8a1\\\",\\n      \\\"username\\\": \\\"testuser\\\",\\n      \\\"avatar\\\": \\\"\\\"\\n    },\\n    \\\"recipient\\\": \\\"all\\\",\\n    \\\"content\\\": \\\"Hello, this is a test message!\\\",\\n    \\\"isRead\\\": true,\\n    \\\"createdAt\\\": \\\"2023-07-21T10:35:00.000Z\\\",\\n    \\\"updatedAt\\\": \\\"2023-07-21T10:35:00.000Z\\\"\\n  }\\n}\"
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": {\n    \"_id\": \"60f7b3b3d8e5c20015f0e8a4\",\n    \"sender\": {\n      \"_id\": \"60f7b3b3d8e5c20015f0e8a1\",\n      \"username\": \"testuser\",\n      \"avatar\": \"\"\n    },\n    \"recipient\": \"all\",\n    \"content\": \"Hello, this is a test message!\",\n    \"isRead\": true,\n    \"createdAt\": \"2023-07-21T10:35:00.000Z\",\n    \"updatedAt\": \"2023-07-21T10:35:00.000Z\"\n  }\n}"
             },
             {
-              \"name\": \"Send Message Error - Missing Content\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [
+              "name": "Send Message Error - Missing Content",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
                   {
-                    \"key\": \"Content-Type\",
-                    \"value\": \"application/json\"
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                \"body\": {
-                  \"mode\": \"raw\",
-                  \"raw\": \"{\\n  \\\"content\\\": \\\"\\\",\\n  \\\"recipientId\\\": \\\"all\\\"\\n}\"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"content\": \"\",\n  \"recipientId\": \"all\"\n}"
                 },
-                \"url\": {
-                  \"raw\": \"{{base_url}}/messages\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"messages\"]
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "messages"]
                 }
               },
-              \"status\": \"Bad Request\",
-              \"code\": 400,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"message\\\": \\\"Message content is required\\\"\\n}\"
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"message\": \"Message content is required\"\n}"
             }
           ]
         },
         {
-          \"name\": \"Mark Messages as Read\",
-          \"request\": {
-            \"method\": \"POST\",
-            \"header\": [
+          "name": "Mark Messages as Read",
+          "request": {
+            "method": "POST",
+            "header": [
               {
-                \"key\": \"Content-Type\",
-                \"value\": \"application/json\"
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
               }
             ],
-            \"body\": {
-              \"mode\": \"raw\",
-              \"raw\": \"{\\n  \\\"senderId\\\": \\\"{{user_id}}\\\"\\n}\"
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"senderId\": \"{{userId}}\"\n}"
             },
-            \"url\": {
-              \"raw\": \"{{base_url}}/messages/mark-read\",
-              \"host\": [\"{{base_url}}\"],
-              \"path\": [\"messages\", \"mark-read\"]
+            "url": {
+              "raw": "{{baseUrl}}/api/messages/mark-read",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "messages", "mark-read"]
             },
-            \"description\": \"Mark all messages from a specific user as read\"
+            "description": "Mark all messages from a specific user as read"
           },
-          \"response\": [
+          "response": [
             {
-              \"name\": \"Mark Messages as Read Success\",
-              \"originalRequest\": {
-                \"method\": \"POST\",
-                \"header\": [
+              "name": "Mark Messages as Read Success",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
                   {
-                    \"key\": \"Content-Type\",
-                    \"value\": \"application/json\"
+                    "key": "Authorization",
+                    "value": "Bearer {{authToken}}"
+                  },
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
                   }
                 ],
-                \"body\": {
-                  \"mode\": \"raw\",
-                  \"raw\": \"{\\n  \\\"senderId\\\": \\\"{{user_id}}\\\"\\n}\"
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"senderId\": \"{{userId}}\"\n}"
                 },
-                \"url\": {
-                  \"raw\": \"{{base_url}}/messages/mark-read\",
-                  \"host\": [\"{{base_url}}\"],
-                  \"path\": [\"messages\", \"mark-read\"]
+                "url": {
+                  "raw": "{{baseUrl}}/api/messages/mark-read",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "messages", "mark-read"]
                 }
               },
-              \"status\": \"OK\",
-              \"code\": 200,
-              \"_postman_previewlanguage\": \"json\",
-              \"body\": \"{\\n  \\\"success\\\": true\\n}\"
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"success\": true\n}"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "WebSocket",
+      "item": [
+        {
+          "name": "Connect to WebSocket",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{authToken}}"
+              }
+            ],
+            "url": {
+              "raw": "ws://localhost:4001/api/ws",
+              "host": ["localhost"],
+              "port": "4001",
+              "path": ["api", "ws"],
+              "protocol": "ws"
+            },
+            "description": "Connect to WebSocket for real-time messaging"
+          }
         }
       ]
     }
